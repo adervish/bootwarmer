@@ -10,12 +10,11 @@
 #define TEMP_CHAR_UUID     "beb5483e-36e1-4688-b7f5-ea07361b26a9"
 
 // Pin definitions
-const int HEATER_PIN = 25;  // PWM output for heater control
+const int HEATER_PIN = 18;  // PWM output for heater control
 const int TEMP_PIN = 34;    // ADC input for temperature sensor
 
 // PWM configuration
-const int PWM_FREQ = 5000;      // 5 KHz
-const int PWM_CHANNEL = 0;
+const int PWM_FREQ = 10;      // 100 Hz
 const int PWM_RESOLUTION = 8;   // 8-bit resolution (0-255)
 
 // Temperature calculation constants
@@ -50,8 +49,11 @@ class HeaterCallbacks: public BLECharacteristicCallbacks {
         if (data != nullptr && pCharacteristic->getLength() > 0) {
             heaterPower = data[0];  // 0-100%
             // Convert percentage to PWM value (0-255)
-            uint32_t pwmValue = (heaterPower * 255) / 100;
-            analogWrite(HEATER_PIN, pwmValue);  // Using analogWrite instead of ledcWrite
+            //uint32_t pwmValue = (heaterPower * 255) / 100;
+            Serial.printf("Setting PWM value: %d", heaterPower);
+            ledcWrite(HEATER_PIN, heaterPower);
+
+            //analogWrite(HEATER_PIN, pwmValue);  // Using analogWrite instead of ledcWrite
         }
     }
 };
@@ -70,10 +72,7 @@ float calculateTemperature(int adcValue) {
 void setup() {
     // Initialize Serial for debugging
     Serial.begin(115200);
-    
-    // Configure PWM output pin
-    pinMode(HEATER_PIN, OUTPUT);
-    analogWrite(HEATER_PIN, 0);  // Start with heater off
+      ledcAttach(HEATER_PIN, PWM_FREQ, PWM_RESOLUTION);
     
     // Configure ADC
     analogReadResolution(12);
