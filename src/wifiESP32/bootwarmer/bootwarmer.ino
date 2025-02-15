@@ -3,8 +3,6 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
-#include "DebugData.h"
-
 // BLE service and characteristic UUIDs
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define HEATER_CHAR_UUID   "beb5483e-36e1-4688-b7f5-ea07361b26a8"
@@ -104,10 +102,10 @@ float calculateTemperature(int adcValue) {
 void setup() {
     // Initialize Serial for debugging
     Serial.begin(115200);
-    ledcAttachPin(HEATER_PIN_R, 0);  // Channel 0 for right heater
-    ledcSetup(0, PWM_FREQ, PWM_RESOLUTION);
-    ledcAttachPin(HEATER_PIN_L, 1);  // Channel 1 for left heater
-    ledcSetup(1, PWM_FREQ, PWM_RESOLUTION);
+    ledcAttach(HEATER_PIN_R, PWM_FREQ, PWM_RESOLUTION);  // Channel 0 for right heater
+    //ledcSetup(0, PWM_FREQ, PWM_RESOLUTION);
+    ledcAttach(HEATER_PIN_L, PWM_FREQ, PWM_RESOLUTION);  // Channel 1 for left heater
+    // ledcSetup(1, PWM_FREQ, PWM_RESOLUTION);
     
     // Configure ADC
     analogReadResolution(12);
