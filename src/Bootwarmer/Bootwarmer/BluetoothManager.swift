@@ -56,12 +56,10 @@ class BluetoothManager: NSObject, ObservableObject {
     
     func setTargetTemperature(_ temp: Float) {
         targetTemperature = temp
-        // Convert temperature to heater power and send to device
+        // Send target temperature to device
         guard let characteristic = heaterCharacteristic else { return }
-        // For now, simple mapping: 0°F = 0% power, 100°F = 100% power
-        let power = UInt8(max(0, min(100, temp)))
-        bootwarmerPeripheral?.writeValue(Data([power]), for: characteristic, type: .withResponse)
-        heaterPower = Float(power)
+        let value = UInt8(max(0, min(100, temp)))
+        bootwarmerPeripheral?.writeValue(Data([value]), for: characteristic, type: .withResponse)
     }
 }
 
