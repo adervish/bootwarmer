@@ -3,11 +3,20 @@ import Charts
 
 struct ContentView: View {
     @StateObject private var bluetoothManager = BluetoothManager()
-    @State private var temperatureReadings: [(timestamp: Date, value: Double)] = []
+    struct Reading {
+        let timestamp: Date
+        let temperature: Double
+        let error: Double
+        let integral: Double
+        let derivative: Double
+        let heaterPower: Double
+    }
+    
+    @State private var readings: [Reading] = []
     
     var body: some View {
-        VStack(spacing: 20) {
-            VStack(spacing: 10) {
+        ScrollView {
+            VStack(spacing: 20) {
                 Text("Temperature")
                     .font(.headline)
                 
@@ -28,8 +37,15 @@ struct ContentView: View {
                                 .font(.subheadline)
                             Text(String(format: "%.1f°F", bluetoothManager.measuredTemperature))
                                 .font(.title)
-                                .onChange(of: bluetoothManager.measuredTemperature) { newTemp in
-                                    temperatureReadings.append((timestamp: Date(), value: Double(newTemp)))
+                                .onChange(of: bluetoothManager.measuredTemperature) { _ in
+                                    readings.append(Reading(
+                                        timestamp: Date(),
+                                        temperature: Double(bluetoothManager.measuredTemperature),
+                                        error: Double(bluetoothManager.pidError),
+                                        integral: Double(bluetoothManager.pidIntegral),
+                                        derivative: Double(bluetoothManager.pidDerivative),
+                                        heaterPower: Double(bluetoothManager.heaterPower)
+                                    ))
                                 }
                         }
                     }
@@ -77,36 +93,149 @@ struct ContentView: View {
                     }
                 }
                 
-                if !temperatureReadings.isEmpty {
-                    Chart(temperatureReadings, id: \.timestamp) { reading in
-                        PointMark(
-                            x: .value("Time", reading.timestamp),
-                            y: .value("Temperature", reading.value)
-                        )
-                        .foregroundStyle(.blue)
-                        .symbol(.circle)
-                        .symbolSize(10)
+            if !readings.isEmpty {
+                VStack(spacing: 0) {
+                    Text("Temperature (°F)")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    Chart {
+                        ForEach(readings, id: \.timestamp) { reading in
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Temperature", reading.temperature)
+                            )
+                            .foregroundStyle(.blue)
+                        }
                     }
-                    .frame(height: 200)
-                    .padding()
+                    .frame(height: 100)
+                    .chartXAxis(.hidden)
+                    .chartYAxis {
+                        AxisMarks { value in
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel {
+                                if let temp = value.as(Double.self) {
+                                    Text("\(Int(temp))°F")
+                                }
+                            }
+                        }
+                    }
+                    
+                    Text("Error (°F)")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                    Chart {
+                        ForEach(readings, id: \.timestamp) { reading in
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Error", reading.error)
+                            )
+                            .foregroundStyle(.red)
+                        }
+                    }
+                    .frame(height: 100)
+                    .chartXAxis(.hidden)
+                    .chartYAxis {
+                        AxisMarks { value in
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel {
+                                if let error = value.as(Double.self) {
+                                    Text(String(format: "%.1f", error))
+                                }
+                            }
+                        }
+                    }
+                    
+                    Text("Integral")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                    Chart {
+                        ForEach(readings, id: \.timestamp) { reading in
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Integral", reading.integral)
+                            )
+                            .foregroundStyle(.green)
+                        }
+                    }
+                    .frame(height: 100)
+                    .chartXAxis(.hidden)
+                    .chartYAxis {
+                        AxisMarks { value in
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel {
+                                if let integral = value.as(Double.self) {
+                                    Text(String(format: "%.1f", integral))
+                                }
+                            }
+                        }
+                    }
+                    
+                    Text("Derivative")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                    Chart {
+                        ForEach(readings, id: \.timestamp) { reading in
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Derivative", reading.derivative)
+                            )
+                            .foregroundStyle(.orange)
+                        }
+                    }
+                    .frame(height: 100)
+                    .chartXAxis(.hidden)
+                    .chartYAxis {
+                        AxisMarks { value in
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel {
+                                if let derivative = value.as(Double.self) {
+                                    Text(String(format: "%.1f", derivative))
+                                }
+                            }
+                        }
+                    }
+                    
+                    Text("Heater Power (%)")
+                        .font(.caption)
+                        .foregroundColor(.purple)
+                    Chart {
+                        ForEach(readings, id: \.timestamp) { reading in
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Power", reading.heaterPower)
+                            )
+                            .foregroundStyle(.purple)
+                        }
+                    }
+                    .frame(height: 100)
                     .chartXAxis {
-                        AxisMarks(position: .bottom) { _ in
+                        AxisMarks { _ in
                             AxisGridLine()
                             AxisTick()
                             AxisValueLabel(format: .dateTime.hour().minute().second())
                         }
                     }
                     .chartYAxis {
-                        AxisMarks { _ in
+                        AxisMarks { value in
                             AxisGridLine()
                             AxisTick()
-                            AxisValueLabel()
+                            AxisValueLabel {
+                                if let power = value.as(Double.self) {
+                                    Text("\(Int(power))%")
+                                }
+                            }
                         }
                     }
                 }
+                .padding()
+                }
                 
                 Button(action: {
-                    temperatureReadings.removeAll()
+                    readings.removeAll()
                 }) {
                     Text("reset chart")
                         .foregroundColor(.white)
