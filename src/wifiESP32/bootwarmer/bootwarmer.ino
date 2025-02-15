@@ -3,6 +3,7 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include "DebugData.h"
 
 // BLE service and characteristic UUIDs
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
@@ -10,8 +11,10 @@
 #define TEMP_CHAR_UUID     "beb5483e-36e1-4688-b7f5-ea07361b26a9"
 
 // Pin definitions
-const int HEATER_PIN = 18;  // PWM output for heater control
-const int TEMP_PIN = 35;    // ADC input for temperature sensor
+const int HEATER_PIN_R = 18;  // PWM output for right heater control
+const int TEMP_PIN_R = 35;    // ADC input for right temperature sensor
+const int HEATER_PIN_L = 25;  // PWM output for left heater control
+const int TEMP_PIN_L = 34;    // ADC input for left temperature sensor
 
 // PWM configuration
 const int PWM_FREQ = 10;      // 100 Hz
@@ -29,11 +32,16 @@ const float KD = 0.7;    // Increased derivative gain to help with quick changes
 
 // Structure to hold all the data we want to send
 struct DebugData {
-    float temperature;
-    float error;
-    float integral;
-    float derivative;
-    uint8_t heaterPower;
+    float temperatureR;
+    float errorR;
+    float integralR;
+    float derivativeR;
+    uint8_t heaterPowerR;
+    float temperatureL;
+    float errorL;
+    float integralL;
+    float derivativeL;
+    uint8_t heaterPowerL;
 } __attribute__((packed));
 
 // Global variables
@@ -41,10 +49,14 @@ BLEServer* pServer = NULL;
 BLECharacteristic* pHeaterCharacteristic = NULL;
 BLECharacteristic* pTempCharacteristic = NULL;
 bool deviceConnected = false;
-float setpointTemp = 70.0;  // Target temperature in Fahrenheit
-float lastError = 0.0;      // Last error for derivative term
-float integral = 0.0;       // Integral accumulator
-uint8_t heaterPower = 0;    // 0-100%
+float setpointTempR = 70.0;  // Target temperature for right side in Fahrenheit
+float setpointTempL = 70.0;  // Target temperature for left side in Fahrenheit
+float lastErrorR = 0.0;      // Last error for right derivative term
+float lastErrorL = 0.0;      // Last error for left derivative term
+float integralR = 0.0;       // Right integral accumulator
+float integralL = 0.0;       // Left integral accumulator
+uint8_t heaterPowerR = 0;    // Right heater 0-100%
+uint8_t heaterPowerL = 0;    // Left heater 0-100%
 unsigned long lastPidTime = 0; // Last PID calculation time
 DebugData debugData;        // Data structure for BLE transmission
 
@@ -66,10 +78,12 @@ class HeaterCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
         uint8_t* data = pCharacteristic->getData();
         if (data != nullptr && pCharacteristic->getLength() > 0) {
-            setpointTemp = data[0];  // Temperature setpoint in Fahrenheit
-            Serial.printf("New temperature setpoint: %.1f°F\n", setpointTemp);
-
-            //analogWrite(HEATER_PIN, pwmValue);  // Using analogWrite instead of ledcWrite
+            if (pCharacteristic->getLength() >= 2) {
+                setpointTempR = data[0];  // Right temperature setpoint in Fahrenheit
+                setpointTempL = data[1];  // Left temperature setpoint in Fahrenheit
+                Serial.printf("New temperature setpoints - Right: %.1f°F, Left: %.1f°F\n", 
+                            setpointTempR, setpointTempL);
+            }
         }
     }
 };
@@ -80,7 +94,6 @@ float calculateTemperature(int adcValue) {
     float resistance = SERIES_R * voltage / (3.3 - voltage);
     resistance = (3.3 * SERIES_R) / voltage - SERIES_R;
     float steinhart = log(resistance / THERMISTOR_R25);
-    Serial.printf( "ADC=%d Voltage=%f R=%f S=%f", adcValue, voltage, resistance, steinhart );
 
     steinhart /= THERMISTOR_BETA;
     steinhart += 1.0 / (25.0 + 273.15);
@@ -91,7 +104,10 @@ float calculateTemperature(int adcValue) {
 void setup() {
     // Initialize Serial for debugging
     Serial.begin(115200);
-    ledcAttach(HEATER_PIN, PWM_FREQ, PWM_RESOLUTION);
+    ledcAttachPin(HEATER_PIN_R, 0);  // Channel 0 for right heater
+    ledcSetup(0, PWM_FREQ, PWM_RESOLUTION);
+    ledcAttachPin(HEATER_PIN_L, 1);  // Channel 1 for left heater
+    ledcSetup(1, PWM_FREQ, PWM_RESOLUTION);
     
     // Configure ADC
     analogReadResolution(12);
@@ -137,54 +153,78 @@ void loop() {
     if (deviceConnected) {
         unsigned long currentTime = millis();
         
-        // Read temperature
-        int adcValue = analogRead(TEMP_PIN);
-        float temperature = calculateTemperature(adcValue);
+        // Read temperatures
+        int adcValueR = analogRead(TEMP_PIN_R);
+        int adcValueL = analogRead(TEMP_PIN_L);
+        float temperatureR = calculateTemperature(adcValueR);
+        float temperatureL = calculateTemperature(adcValueL);
         
         // Update initial debug data
-        debugData.temperature = temperature;
+        debugData.temperatureR = temperatureR;
+        debugData.temperatureL = temperatureL;
         
         // Calculate PID control every 250ms for faster response
         if (currentTime - lastPidTime >= 250) {
-            // Calculate error
-            float error = setpointTemp - temperature;
+            // Right side PID
+            float errorR = setpointTempR - temperatureR;
+            integralR = constrain(integralR + errorR, -255, 255);
+            float derivativeR = (errorR - lastErrorR);
+            float outputR = (KP * errorR) + (KI * integralR) + (KD * derivativeR);
+            heaterPowerR = constrain((int)outputR, 0, 100);
+            uint8_t pwmLevelR = (int)((float)heaterPowerR / 100.0 * 255.0);
+            ledcWrite(0, pwmLevelR);  // Channel 0 for right heater
             
-            // Calculate integral term with anti-windup
-            integral = constrain(integral + error, -255, 255);
+            // Left side PID
+            float errorL = setpointTempL - temperatureL;
+            integralL = constrain(integralL + errorL, -255, 255);
+            float derivativeL = (errorL - lastErrorL);
+            float outputL = (KP * errorL) + (KI * integralL) + (KD * derivativeL);
+            heaterPowerL = constrain((int)outputL, 0, 100);
+            uint8_t pwmLevelL = (int)((float)heaterPowerL / 100.0 * 255.0);
+            ledcWrite(1, pwmLevelL);  // Channel 1 for left heater
             
-            // Calculate derivative term
-            float derivative = (error - lastError);
+            // Update debug data
+            debugData.errorR = errorR;
+            debugData.integralR = integralR;
+            debugData.derivativeR = derivativeR;
+            debugData.heaterPowerR = heaterPowerR;
+            debugData.errorL = errorL;
+            debugData.integralL = integralL;
+            debugData.derivativeL = derivativeL;
+            debugData.heaterPowerL = heaterPowerL;
             
-            // Update all debug data
-            debugData.error = error;
-            debugData.integral = integral;
-            debugData.derivative = derivative;
-            debugData.heaterPower = heaterPower;
+            // Send updated debug data over BLE
+            pTempCharacteristic->setValue((uint8_t*)&debugData, sizeof(DebugData));
+            pTempCharacteristic->notify();
+            ledcWrite(HEATER_PIN_L, pwmLevelL);  // Channel 1 for left heater
+            
+            // Update debug data
+            debugData.errorR = errorR;
+            debugData.integralR = integralR;
+            debugData.derivativeR = derivativeR;
+            debugData.heaterPowerR = heaterPowerR;
+            debugData.errorL = errorL;
+            debugData.integralL = integralL;
+            debugData.derivativeL = derivativeL;
+            debugData.heaterPowerL = heaterPowerL;
             
             // Send updated debug data over BLE
             pTempCharacteristic->setValue((uint8_t*)&debugData, sizeof(DebugData));
             pTempCharacteristic->notify();
             
-            // Calculate PID output
-            float output = (KP * error) + (KI * integral) + (KD * derivative);
-            
-            // Convert output to PWM value (0-100%)
-            heaterPower = constrain((int)output, 0, 100);
-            
-            // Convert percentage to PWM value (0-255)
-            uint8_t pwmLevel = (int)((float)heaterPower / 100.0 * 255.0);
-            ledcWrite(HEATER_PIN, pwmLevel);
-            
             // Update tracking variables
-            lastError = error;
+            lastErrorR = errorR;
+            lastErrorL = errorL;
             lastPidTime = currentTime;
             
             // Print debug info
-            Serial.printf("Temp: %.1f°F, Setpoint: %.1f°F, Error: %.1f, Output: %d%%, PWM: %d\n", 
-                         temperature, setpointTemp, error, heaterPower, pwmLevel);
+            Serial.printf("Right - Temp: %.1f°F, Set: %.1f°F, Error: %.1f, Power: %d%%\n", 
+                         temperatureR, setpointTempR, errorR, heaterPowerR);
+            Serial.printf("Left  - Temp: %.1f°F, Set: %.1f°F, Error: %.1f, Power: %d%%\n", 
+                         temperatureL, setpointTempL, errorL, heaterPowerL);
         }
     }
     
     // Small delay for system stability
-    delay(50);
+    delay(500);
 }
