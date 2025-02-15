@@ -11,7 +11,7 @@
 
 // Pin definitions
 const int HEATER_PIN = 18;  // PWM output for heater control
-const int TEMP_PIN = 34;    // ADC input for temperature sensor
+const int TEMP_PIN = 35;    // ADC input for temperature sensor
 
 // PWM configuration
 const int PWM_FREQ = 10;      // 100 Hz
@@ -48,10 +48,11 @@ class HeaterCallbacks: public BLECharacteristicCallbacks {
         uint8_t* data = pCharacteristic->getData();
         if (data != nullptr && pCharacteristic->getLength() > 0) {
             heaterPower = data[0];  // 0-100%
+            uint8_t pwmLevel = (int) ((float) heaterPower / 100.0 * 255.0);
             // Convert percentage to PWM value (0-255)
             //uint32_t pwmValue = (heaterPower * 255) / 100;
-            Serial.printf("Setting PWM value: %d", heaterPower);
-            ledcWrite(HEATER_PIN, heaterPower);
+            Serial.printf("Setting PWM value: %d", pwmLevel);
+            ledcWrite(HEATER_PIN, pwmLevel);
 
             //analogWrite(HEATER_PIN, pwmValue);  // Using analogWrite instead of ledcWrite
         }
@@ -62,7 +63,10 @@ class HeaterCallbacks: public BLECharacteristicCallbacks {
 float calculateTemperature(int adcValue) {
     float voltage = (float)adcValue * (3.3 / 4095.0);  // ESP32 ADC is 12-bit
     float resistance = SERIES_R * voltage / (3.3 - voltage);
+    resistance = (3.3 * SERIES_R) / voltage - SERIES_R;
     float steinhart = log(resistance / THERMISTOR_R25);
+    Serial.printf( "ADC=%d Voltage=%f R=%f S=%f", adcValue, voltage, resistance, steinhart );
+
     steinhart /= THERMISTOR_BETA;
     steinhart += 1.0 / (25.0 + 273.15);
     steinhart = 1.0 / steinhart;
@@ -72,7 +76,7 @@ float calculateTemperature(int adcValue) {
 void setup() {
     // Initialize Serial for debugging
     Serial.begin(115200);
-      ledcAttach(HEATER_PIN, PWM_FREQ, PWM_RESOLUTION);
+    ledcAttach(HEATER_PIN, PWM_FREQ, PWM_RESOLUTION);
     
     // Configure ADC
     analogReadResolution(12);
@@ -127,7 +131,7 @@ void loop() {
         pTempCharacteristic->notify();
         
         // Print debug info
-        Serial.printf("Temperature: %.1f°C, Heater: %d%%\n", temperature, heaterPower);
+        Serial.printf("Temperature: %.1f°C, Adc: %d, Heater: %d%%\n", temperature, adcValue, heaterPower);
     }
     
     // Update temperature every second
