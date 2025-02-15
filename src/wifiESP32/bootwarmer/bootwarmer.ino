@@ -27,6 +27,15 @@ const float KP = 7.0;    // Increased proportional gain for faster response
 const float KI = 0.7;    // Keep integral gain the same to avoid oscillation
 const float KD = 0.7;    // Increased derivative gain to help with quick changes
 
+// Structure to hold all the data we want to send
+struct DebugData {
+    float temperature;
+    float error;
+    float integral;
+    float derivative;
+    uint8_t heaterPower;
+} __attribute__((packed));
+
 // Global variables
 BLEServer* pServer = NULL;
 BLECharacteristic* pHeaterCharacteristic = NULL;
@@ -37,6 +46,7 @@ float lastError = 0.0;      // Last error for derivative term
 float integral = 0.0;       // Integral accumulator
 uint8_t heaterPower = 0;    // 0-100%
 unsigned long lastPidTime = 0; // Last PID calculation time
+DebugData debugData;        // Data structure for BLE transmission
 
 // BLE server callbacks
 class ServerCallbacks: public BLEServerCallbacks {
@@ -131,14 +141,11 @@ void loop() {
         int adcValue = analogRead(TEMP_PIN);
         float temperature = calculateTemperature(adcValue);
         
-        // Update temperature characteristic
-        uint8_t tempData[4];
-        memcpy(tempData, &temperature, 4);
-        pTempCharacteristic->setValue(tempData, 4);
-        pTempCharacteristic->notify();
+        // Update initial debug data
+        debugData.temperature = temperature;
         
         // Calculate PID control every 250ms for faster response
-        if (currentTime - lastPidTime >= 500) {
+        if (currentTime - lastPidTime >= 250) {
             // Calculate error
             float error = setpointTemp - temperature;
             
@@ -147,6 +154,16 @@ void loop() {
             
             // Calculate derivative term
             float derivative = (error - lastError);
+            
+            // Update all debug data
+            debugData.error = error;
+            debugData.integral = integral;
+            debugData.derivative = derivative;
+            debugData.heaterPower = heaterPower;
+            
+            // Send updated debug data over BLE
+            pTempCharacteristic->setValue((uint8_t*)&debugData, sizeof(DebugData));
+            pTempCharacteristic->notify();
             
             // Calculate PID output
             float output = (KP * error) + (KI * integral) + (KD * derivative);
@@ -168,6 +185,6 @@ void loop() {
         }
     }
     
-    // Smaller delay for better system responsiveness
-    delay(500);
+    // Small delay for system stability
+    delay(50);
 }

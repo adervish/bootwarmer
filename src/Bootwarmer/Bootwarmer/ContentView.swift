@@ -7,25 +7,58 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            Text("Current Temperature")
-                .font(.headline)
-            
-            if bluetoothManager.isConnected {
-                Text("Connected")
-                    .foregroundColor(.green)
+            VStack(spacing: 10) {
+                Text("Temperature")
+                    .font(.headline)
                 
-                Text(String(format: "%.1f°C", bluetoothManager.temperature))
-                    .font(.largeTitle)
-                    .onChange(of: bluetoothManager.temperature) { newTemp in
-                        temperatureReadings.append((timestamp: Date(), value: Double(newTemp)))
+                if bluetoothManager.isConnected {
+                    Text("Connected")
+                        .foregroundColor(.green)
+                    
+                    HStack(spacing: 20) {
+                        VStack {
+                            Text("Target")
+                                .font(.subheadline)
+                            Text(String(format: "%.1f°F", bluetoothManager.targetTemperature))
+                                .font(.title)
+                        }
+                        
+                        VStack {
+                            Text("Measured")
+                                .font(.subheadline)
+                            Text(String(format: "%.1f°F", bluetoothManager.measuredTemperature))
+                                .font(.title)
+                                .onChange(of: bluetoothManager.measuredTemperature) { newTemp in
+                                    temperatureReadings.append((timestamp: Date(), value: Double(newTemp)))
+                                }
+                        }
                     }
+                    
+                    // PID Debug Information
+                    VStack(alignment: .leading, spacing: 8) {
+                    Text("PID Debug Info")
+                        .font(.headline)
+                        .padding(.bottom, 4)
+                    
+                    Group {
+                        Text(String(format: "Error: %.2f°F", bluetoothManager.pidError))
+                        Text(String(format: "Integral: %.2f", bluetoothManager.pidIntegral))
+                        Text(String(format: "Derivative: %.2f", bluetoothManager.pidDerivative))
+                        Text(String(format: "Heater Power: %d%%", Int(bluetoothManager.heaterPower)))
+                    }
+                    .font(.system(.body, design: .monospaced))
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(10)
                 
-                VStack {
-                    Text("Left target temp: \(Int(bluetoothManager.heaterPower)) ℉")
+                    VStack(spacing: 5) {
+                    Text("Set Target Temperature")
+                        .font(.subheadline)
                     Slider(value: Binding(
-                        get: { bluetoothManager.heaterPower },
-                        set: { bluetoothManager.setHeaterPower($0) }
-                    ), in: 0...255, step: 5)
+                        get: { bluetoothManager.targetTemperature },
+                        set: { bluetoothManager.setTargetTemperature($0) }
+                    ), in: 50...100, step: 1)
                 }
                 .padding()
             } else {
@@ -50,6 +83,8 @@ struct ContentView: View {
                         y: .value("Temperature", reading.value)
                     )
                     .foregroundStyle(.blue)
+                    .symbol(.circle)
+                    .symbolSize(10)
                 }
                 .frame(height: 200)
                 .padding()

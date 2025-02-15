@@ -6,10 +6,23 @@ class BluetoothManager: NSObject, ObservableObject {
     private var heaterCharacteristic: CBCharacteristic?
     private var temperatureCharacteristic: CBCharacteristic?
     
+    // Structure matching the embedded controller's debug data
+    struct DebugData {
+        var temperature: Float
+        var error: Float
+        var integral: Float
+        var derivative: Float
+        var heaterPower: UInt8
+    }
+    
     @Published var isScanning = false
     @Published var isConnected = false
-    @Published var temperature: Float = 0.0
+    @Published var measuredTemperature: Float = 0.0
+    @Published var targetTemperature: Float = 70.0  // Default target temp of 70°F
     @Published var heaterPower: Float = 0.0
+    @Published var pidError: Float = 0.0
+    @Published var pidIntegral: Float = 0.0
+    @Published var pidDerivative: Float = 0.0
     @Published var connectionStatus: ConnectionStatus = .disconnected
 
     enum ConnectionStatus {
@@ -41,11 +54,14 @@ class BluetoothManager: NSObject, ObservableObject {
         centralManager.stopScan()
     }
     
-    func setHeaterPower(_ power: Float) {
+    func setTargetTemperature(_ temp: Float) {
+        targetTemperature = temp
+        // Convert temperature to heater power and send to device
         guard let characteristic = heaterCharacteristic else { return }
-        let value = UInt8(max(0, min(100, power)))
-        bootwarmerPeripheral?.writeValue(Data([value]), for: characteristic, type: .withResponse)
-        heaterPower = Float(value)
+        // For now, simple mapping: 0°F = 0% power, 100°F = 100% power
+        let power = UInt8(max(0, min(100, temp)))
+        bootwarmerPeripheral?.writeValue(Data([power]), for: characteristic, type: .withResponse)
+        heaterPower = Float(power)
     }
 }
 
@@ -113,10 +129,23 @@ extension BluetoothManager: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         if characteristic.uuid == tempCharUUID,
            let data = characteristic.value,
-           data.count >= 4 {
-            let temp = data.withUnsafeBytes { $0.load(as: Float.self) }
+           data.count >= MemoryLayout<DebugData>.size {
+            let debugData = data.withUnsafeBytes { ptr -> DebugData in
+                return DebugData(
+                    temperature: ptr.load(as: Float.self),
+                    error: ptr.load(fromByteOffset: 4, as: Float.self),
+                    integral: ptr.load(fromByteOffset: 8, as: Float.self),
+                    derivative: ptr.load(fromByteOffset: 12, as: Float.self),
+                    heaterPower: ptr.load(fromByteOffset: 16, as: UInt8.self)
+                )
+            }
+            
             DispatchQueue.main.async {
-                self.temperature = temp
+                self.measuredTemperature = debugData.temperature
+                self.heaterPower = Float(debugData.heaterPower)
+                self.pidError = debugData.error
+                self.pidIntegral = debugData.integral
+                self.pidDerivative = debugData.derivative
             }
         }
     }
