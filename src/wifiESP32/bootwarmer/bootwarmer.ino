@@ -24,9 +24,9 @@ const float THERMISTOR_BETA = 3950.0;  // Beta coefficient
 const float SERIES_R = 10000.0;        // 10k series resistor
 
 // PID constants
-const float KP = 7.0;    // Increased proportional gain for faster response
-const float KI = 0.7;    // Keep integral gain the same to avoid oscillation
-const float KD = 0.7;    // Increased derivative gain to help with quick changes
+const float KP = 5.0;    // Increased proportional gain for faster response
+const float KI = 0.5;    // Keep integral gain the same to avoid oscillation
+const float KD = 1.0;    // Increased derivative gain to help with quick changes
 
 // Structure to hold all the data we want to send
 struct DebugData {
@@ -170,7 +170,7 @@ void loop() {
             float outputR = (KP * errorR) + (KI * integralR) + (KD * derivativeR);
             heaterPowerR = constrain((int)outputR, 0, 100);
             uint8_t pwmLevelR = (int)((float)heaterPowerR / 100.0 * 255.0);
-            ledcWrite(0, pwmLevelR);  // Channel 0 for right heater
+            ledcWrite(HEATER_PIN_R, pwmLevelR);  // Channel 0 for right heater
             
             // Left side PID
             float errorL = setpointTempL - temperatureL;
@@ -179,7 +179,7 @@ void loop() {
             float outputL = (KP * errorL) + (KI * integralL) + (KD * derivativeL);
             heaterPowerL = constrain((int)outputL, 0, 100);
             uint8_t pwmLevelL = (int)((float)heaterPowerL / 100.0 * 255.0);
-            ledcWrite(1, pwmLevelL);  // Channel 1 for left heater
+            ledcWrite(HEATER_PIN_L, pwmLevelL);  // Channel 1 for left heater
             
             // Update debug data
             debugData.errorR = errorR;
@@ -194,7 +194,7 @@ void loop() {
             // Send updated debug data over BLE
             pTempCharacteristic->setValue((uint8_t*)&debugData, sizeof(DebugData));
             pTempCharacteristic->notify();
-            ledcWrite(HEATER_PIN_L, pwmLevelL);  // Channel 1 for left heater
+            //ledcWrite(HEATER_PIN_L, pwmLevelL);  // Channel 1 for left heater
             
             // Update debug data
             debugData.errorR = errorR;
@@ -224,5 +224,5 @@ void loop() {
     }
     
     // Small delay for system stability
-    delay(500);
+    delay(50);
 }

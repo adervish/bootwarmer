@@ -30,49 +30,50 @@ struct ContentView: View {
                 if bluetoothManager.isConnected {
                     Text("Connected")
                         .foregroundColor(.green)
-                    
-                    HStack(spacing: 30) {
-                        // Right Side
-                        VStack {
-                            Text("Right Boot")
-                                .font(.headline)
-                            HStack(spacing: 20) {
-                                VStack {
-                                    Text("Target")
-                                        .font(.subheadline)
-                                    Text(String(format: "%.1f°F", bluetoothManager.targetTemperatureR))
-                                        .font(.title)
-                                }
-                                
-                                VStack {
-                                    Text("Measured")
-                                        .font(.subheadline)
-                                    Text(String(format: "%.1f°F", bluetoothManager.measuredTemperatureR))
-                                        .font(.title)
-                                }
-                            }
-                        }
-                        
+                
                         // Left Side
                         VStack {
-                            Text("Left Boot")
+                            Text("Left")
                                 .font(.headline)
                             HStack(spacing: 20) {
                                 VStack {
                                     Text("Target")
                                         .font(.subheadline)
                                     Text(String(format: "%.1f°F", bluetoothManager.targetTemperatureL))
-                                        .font(.title)
+                                        .font(.title2)
                                 }
                                 
                                 VStack {
                                     Text("Measured")
                                         .font(.subheadline)
                                     Text(String(format: "%.1f°F", bluetoothManager.measuredTemperatureL))
-                                        .font(.title)
+                                        .font(.title2)
                                 }
                             }
                         }
+                    
+                    HStack(spacing: 30) {
+                        // Right Side
+                        VStack {
+                            Text("Right")
+                                .font(.headline)
+                            HStack(spacing: 20) {
+                                VStack {
+                                    Text("Target")
+                                        .font(.subheadline)
+                                    Text(String(format: "%.1f°F", bluetoothManager.targetTemperatureR))
+                                        .font(.title2)
+                                }
+                                
+                                VStack {
+                                    Text("Measured")
+                                        .font(.subheadline)
+                                    Text(String(format: "%.1f°F", bluetoothManager.measuredTemperatureR))
+                                        .font(.title2)
+                                }
+                            }
+                        }
+                        
                     }
                     .onChange(of: bluetoothManager.measuredTemperatureR) { _ in
                         readings.append(Reading(
@@ -91,24 +92,10 @@ struct ContentView: View {
                     }
                     
                     HStack(spacing: 20) {
-                        // Right Side PID Debug
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Right PID Debug")
-                                .font(.headline)
-                                .padding(.bottom, 4)
-                            
-                            Group {
-                                Text(String(format: "Error: %.2f°F", bluetoothManager.pidErrorR))
-                                Text(String(format: "Integral: %.2f", bluetoothManager.pidIntegralR))
-                                Text(String(format: "Derivative: %.2f", bluetoothManager.pidDerivativeR))
-                                Text(String(format: "Heater Power: %d%%", Int(bluetoothManager.heaterPowerR)))
-                            }
-                            .font(.system(.body, design: .monospaced))
-                        }
-                        
+
                         // Left Side PID Debug
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Left PID Debug")
+                            Text("Left")
                                 .font(.headline)
                                 .padding(.bottom, 4)
                             
@@ -118,17 +105,47 @@ struct ContentView: View {
                                 Text(String(format: "Derivative: %.2f", bluetoothManager.pidDerivativeL))
                                 Text(String(format: "Heater Power: %d%%", Int(bluetoothManager.heaterPowerL)))
                             }
-                            .font(.system(.body, design: .monospaced))
+                            .font(.system(size: UIFont.systemFontSize / 1.5, design: .monospaced))
                         }
+
+                        // Right Side PID Debug
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Right")
+                                .font(.headline)
+                                .padding(.bottom, 4)
+                                                            .font(.system(size: UIFont.systemFontSize / 1.5, design: .monospaced))
+
+                            
+                            Group {
+                                Text(String(format: "Error: %.2f°F", bluetoothManager.pidErrorR))
+                                Text(String(format: "Integral: %.2f", bluetoothManager.pidIntegralR))
+                                Text(String(format: "Derivative: %.2f", bluetoothManager.pidDerivativeR))
+                                Text(String(format: "Heater Power: %d%%", Int(bluetoothManager.heaterPowerR)))
+                            }
+                            .font(.system(size: UIFont.systemFontSize / 1.5, design: .monospaced))
+                        }
+                        
+
                     }
                     .padding()
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(5)
                     
                     HStack(spacing: 20) {
+         
+                        // Left Side Temperature Control
+                        VStack(spacing: 5) {
+                            Text("Target")
+                                .font(.subheadline)
+                            Slider(value: Binding(
+                                get: { bluetoothManager.targetTemperatureL },
+                                set: { bluetoothManager.setTargetTemperatures(right: bluetoothManager.targetTemperatureR, left: $0) }
+                            ), in: 50...100, step: 1)
+                        }
+
                         // Right Side Temperature Control
                         VStack(spacing: 5) {
-                            Text("Right Target")
+                            Text("Target")
                                 .font(.subheadline)
                             Slider(value: Binding(
                                 get: { bluetoothManager.targetTemperatureR },
@@ -136,15 +153,7 @@ struct ContentView: View {
                             ), in: 50...100, step: 1)
                         }
                         
-                        // Left Side Temperature Control
-                        VStack(spacing: 5) {
-                            Text("Left Target")
-                                .font(.subheadline)
-                            Slider(value: Binding(
-                                get: { bluetoothManager.targetTemperatureL },
-                                set: { bluetoothManager.setTargetTemperatures(right: bluetoothManager.targetTemperatureR, left: $0) }
-                            ), in: 50...100, step: 1)
-                        }
+         
                     }
                     .padding()
                 }
@@ -171,17 +180,20 @@ struct ContentView: View {
                         ForEach(readings, id: \.timestamp) { reading in
                             LineMark(
                                 x: .value("Time", reading.timestamp),
-                                y: .value("Right", reading.temperatureR)
+                                y: .value("Right", reading.temperatureL)
                             )
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(by: .value("Temperature", "Left"))
                             
-                            //LineMark(
-                            //    x: .value("Time", reading.timestamp),
-                            //    y: .value("Left", reading.temperatureL)
-                            //)
-                            //.foregroundStyle(.cyan)
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Left", reading.temperatureR)
+                            )
+                            .foregroundStyle(by: .value("Temperature", "Right"))
                         }
-                    }
+                    }.chartForegroundStyleScale([
+                        "Right": .blue,
+                        "Left": .cyan
+                    ])
                     .frame(height: 100)
                     .chartXAxis(.hidden)
                     .chartLegend(position: .top)
@@ -203,17 +215,20 @@ struct ContentView: View {
                         ForEach(readings, id: \.timestamp) { reading in
                             LineMark(
                                 x: .value("Time", reading.timestamp),
-                                y: .value("Right", reading.errorR)
+                                y: .value("Right", reading.errorL)
                             )
-                            .foregroundStyle(.red)
+                            .foregroundStyle(by: .value("Error", "Left"))
                             
-                            //LineMark(
-                            //    x: .value("Time", reading.timestamp),
-                            //    y: .value("Left", reading.errorL)
-                           // )
-                           // .foregroundStyle(.pink)
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Left", reading.errorR)
+                            )
+                            .foregroundStyle(by: .value("Error", "Right"))
                         }
-                    }
+                    }.chartForegroundStyleScale([
+                        "Right": .red,
+                        "Left": .pink
+                    ])
                     .frame(height: 100)
                     .chartXAxis(.hidden)
                     .chartLegend(position: .top)
@@ -235,17 +250,20 @@ struct ContentView: View {
                         ForEach(readings, id: \.timestamp) { reading in
                             LineMark(
                                 x: .value("Time", reading.timestamp),
-                                y: .value("Right", reading.integralR)
+                                y: .value("Right", reading.integralL)
                             )
-                            .foregroundStyle(.green)
+                            .foregroundStyle(by: .value("Integral", "Left"))
                             
-                            //LineMark(
-                            //    x: .value("Time", reading.timestamp),
-                            //    y: .value("Left", reading.integralL)
-                            //)
-                            //.foregroundStyle(.mint)
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Left", reading.integralR)
+                            )
+                            .foregroundStyle(by: .value("Integral", "Right"))
                         }
-                    }
+                    }.chartForegroundStyleScale([
+                        "Right": .green,
+                        "Left": .mint
+                    ])
                     .frame(height: 100)
                     .chartXAxis(.hidden)
                     .chartLegend(position: .top)
@@ -267,17 +285,20 @@ struct ContentView: View {
                         ForEach(readings, id: \.timestamp) { reading in
                             LineMark(
                                 x: .value("Time", reading.timestamp),
-                                y: .value("Right", reading.derivativeR)
+                                y: .value("Right", reading.derivativeL)
                             )
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(by: .value("Derivative", "Left"))
                             
                             LineMark(
                                 x: .value("Time", reading.timestamp),
-                                y: .value("Left", reading.derivativeL)
+                                y: .value("Left", reading.derivativeR)
                             )
-                            .foregroundStyle(.yellow)
+                            .foregroundStyle(by: .value("Derivative", "Right"))
                         }
-                    }
+                    }.chartForegroundStyleScale([
+                        "Right": .orange,
+                        "Left": .yellow
+                    ])
                     .frame(height: 100)
                     .chartXAxis(.hidden)
                     .chartLegend(position: .top)
@@ -299,17 +320,20 @@ struct ContentView: View {
                         ForEach(readings, id: \.timestamp) { reading in
                             LineMark(
                                 x: .value("Time", reading.timestamp),
-                                y: .value("Right", reading.heaterPowerR)
+                                y: .value("Right", reading.heaterPowerL)
                             )
-                            .foregroundStyle(.purple)
+                            .foregroundStyle(by: .value("Heater Power", "Left"))
                             
-                            //LineMark(
-                            //    x: .value("Time", reading.timestamp),
-                            //    y: .value("Left", reading.heaterPowerL)
-                            //)
-                            //.foregroundStyle(.indigo)
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Left", reading.heaterPowerR)
+                            )
+                            .foregroundStyle(by: .value("Heater Power", "Right"))
                         }
-                    }
+                    }.chartForegroundStyleScale([
+                        "Right": .purple,
+                        "Left": .indigo
+                    ])
                     .frame(height: 100)
                     .chartLegend(position: .top)
                     .chartXAxis {
