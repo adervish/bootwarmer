@@ -22,12 +22,21 @@ const float THERMISTOR_R25 = 10000.0;  // 10k thermistor
 const float THERMISTOR_BETA = 3950.0;  // Beta coefficient
 const float SERIES_R = 10000.0;        // 10k series resistor
 
+// PID constants
+const float KP = 7.0;    // Increased proportional gain for faster response
+const float KI = 0.7;    // Keep integral gain the same to avoid oscillation
+const float KD = 0.7;    // Increased derivative gain to help with quick changes
+
 // Global variables
 BLEServer* pServer = NULL;
 BLECharacteristic* pHeaterCharacteristic = NULL;
 BLECharacteristic* pTempCharacteristic = NULL;
 bool deviceConnected = false;
-uint8_t heaterPower = 0;  // 0-100%
+float setpointTemp = 70.0;  // Target temperature in Fahrenheit
+float lastError = 0.0;      // Last error for derivative term
+float integral = 0.0;       // Integral accumulator
+uint8_t heaterPower = 0;    // 0-100%
+unsigned long lastPidTime = 0; // Last PID calculation time
 
 // BLE server callbacks
 class ServerCallbacks: public BLEServerCallbacks {
@@ -47,12 +56,8 @@ class HeaterCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
         uint8_t* data = pCharacteristic->getData();
         if (data != nullptr && pCharacteristic->getLength() > 0) {
-            heaterPower = data[0];  // 0-100%
-            uint8_t pwmLevel = (int) ((float) heaterPower / 100.0 * 255.0);
-            // Convert percentage to PWM value (0-255)
-            //uint32_t pwmValue = (heaterPower * 255) / 100;
-            Serial.printf("Setting PWM value: %d", pwmLevel);
-            ledcWrite(HEATER_PIN, pwmLevel);
+            setpointTemp = data[0];  // Temperature setpoint in Fahrenheit
+            Serial.printf("New temperature setpoint: %.1f°F\n", setpointTemp);
 
             //analogWrite(HEATER_PIN, pwmValue);  // Using analogWrite instead of ledcWrite
         }
@@ -70,7 +75,7 @@ float calculateTemperature(int adcValue) {
     steinhart /= THERMISTOR_BETA;
     steinhart += 1.0 / (25.0 + 273.15);
     steinhart = 1.0 / steinhart;
-    return steinhart - 273.15;  // Convert Kelvin to Celsius
+    return (steinhart - 273.15) * 9/5 + 32;  // Convert Kelvin to Fahrenheit
 }
 
 void setup() {
@@ -120,6 +125,8 @@ void setup() {
 
 void loop() {
     if (deviceConnected) {
+        unsigned long currentTime = millis();
+        
         // Read temperature
         int adcValue = analogRead(TEMP_PIN);
         float temperature = calculateTemperature(adcValue);
@@ -130,10 +137,37 @@ void loop() {
         pTempCharacteristic->setValue(tempData, 4);
         pTempCharacteristic->notify();
         
-        // Print debug info
-        Serial.printf("Temperature: %.1f°C, Adc: %d, Heater: %d%%\n", temperature, adcValue, heaterPower);
+        // Calculate PID control every 250ms for faster response
+        if (currentTime - lastPidTime >= 500) {
+            // Calculate error
+            float error = setpointTemp - temperature;
+            
+            // Calculate integral term with anti-windup
+            integral = constrain(integral + error, -255, 255);
+            
+            // Calculate derivative term
+            float derivative = (error - lastError);
+            
+            // Calculate PID output
+            float output = (KP * error) + (KI * integral) + (KD * derivative);
+            
+            // Convert output to PWM value (0-100%)
+            heaterPower = constrain((int)output, 0, 100);
+            
+            // Convert percentage to PWM value (0-255)
+            uint8_t pwmLevel = (int)((float)heaterPower / 100.0 * 255.0);
+            ledcWrite(HEATER_PIN, pwmLevel);
+            
+            // Update tracking variables
+            lastError = error;
+            lastPidTime = currentTime;
+            
+            // Print debug info
+            Serial.printf("Temp: %.1f°F, Setpoint: %.1f°F, Error: %.1f, Output: %d%%, PWM: %d\n", 
+                         temperature, setpointTemp, error, heaterPower, pwmLevel);
+        }
     }
     
-    // Update temperature every second
-    delay(1000);
+    // Smaller delay for better system responsiveness
+    delay(500);
 }
