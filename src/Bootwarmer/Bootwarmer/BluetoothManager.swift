@@ -1,26 +1,13 @@
 import CoreBluetooth
 import Foundation
 
+
+
 class BluetoothManager: NSObject, ObservableObject {
     private var centralManager: CBCentralManager!
     private var bootwarmerPeripheral: CBPeripheral?
     private var heaterCharacteristic: CBCharacteristic?
     private var temperatureCharacteristic: CBCharacteristic?
-    
-    // Structure matching the embedded controller's debug data
-    // Must match exactly with C struct in DebugData.h
-    struct DebugData {
-        var temperatureR: Float
-        var errorR: Float
-        var integralR: Float
-        var derivativeR: Float
-        var heaterPowerR: UInt8
-        var temperatureL: Float
-        var errorL: Float
-        var integralL: Float
-        var derivativeL: Float
-        var heaterPowerL: UInt8       
-}
     
     @Published var isScanning = false
     @Published var isConnected = false
@@ -154,12 +141,12 @@ extension BluetoothManager: CBPeripheralDelegate {
                     errorR: ptr.load(fromByteOffset: 4, as: Float.self),
                     integralR: ptr.load(fromByteOffset: 8, as: Float.self),
                     derivativeR: ptr.load(fromByteOffset: 12, as: Float.self),
-                    heaterPowerR: ptr.load(fromByteOffset: 16, as: UInt8.self),
-                    temperatureL: ptr.load(fromByteOffset: 17, as: Float.self),
-                    errorL: ptr.load(fromByteOffset: 21, as: Float.self),
-                    integralL: ptr.load(fromByteOffset: 25, as: Float.self),
-                    derivativeL: ptr.load(fromByteOffset: 29, as: Float.self),
-                    heaterPowerL: ptr.load(fromByteOffset: 33, as: UInt8.self)
+                    heaterPowerR: ptr.load(fromByteOffset: 16, as: UInt32.self),
+                    temperatureL: ptr.load(fromByteOffset: 20, as: Float.self),
+                    errorL: ptr.load(fromByteOffset: 24, as: Float.self),
+                    integralL: ptr.load(fromByteOffset: 28, as: Float.self),
+                    derivativeL: ptr.load(fromByteOffset: 32, as: Float.self),
+                    heaterPowerL: ptr.load(fromByteOffset: 36, as: UInt32.self)
                 )
             }
             

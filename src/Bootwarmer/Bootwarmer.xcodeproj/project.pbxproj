@@ -27,6 +27,8 @@
 		4C73C73C2D57DF3F005F0648 /* Bootwarmer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bootwarmer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C73C74E2D57DF41005F0648 /* BootwarmerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BootwarmerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C73C7582D57DF41005F0648 /* BootwarmerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BootwarmerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C9643E52D610583000F40D2 /* DebugData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DebugData.h; sourceTree = "<group>"; };
+		4C9643E62D6105D0000F40D2 /* Bootwarmer-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Bootwarmer-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -75,6 +77,8 @@
 		4C73C7332D57DF3F005F0648 = {
 			isa = PBXGroup;
 			children = (
+				4C9643E62D6105D0000F40D2 /* Bootwarmer-Bridging-Header.h */,
+				4C9643E52D610583000F40D2 /* DebugData.h */,
 				4C73C73E2D57DF3F005F0648 /* Bootwarmer */,
 				4C73C7512D57DF41005F0648 /* BootwarmerTests */,
 				4C73C75B2D57DF41005F0648 /* BootwarmerUITests */,
@@ -413,6 +417,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = bentboolean.Bootwarmer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "Bootwarmer-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -443,6 +448,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = bentboolean.Bootwarmer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "Bootwarmer-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

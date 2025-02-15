@@ -34,12 +34,12 @@ struct DebugData {
     float errorR;
     float integralR;
     float derivativeR;
-    uint8_t heaterPowerR;
+    uint32_t heaterPowerR;
     float temperatureL;
     float errorL;
     float integralL;
     float derivativeL;
-    uint8_t heaterPowerL;
+    uint32_t heaterPowerL;
 } __attribute__((packed));
 
 // Global variables
