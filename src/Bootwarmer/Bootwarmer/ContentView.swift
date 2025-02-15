@@ -175,11 +175,11 @@ struct ContentView: View {
                             )
                             .foregroundStyle(.blue)
                             
-                            LineMark(
-                                x: .value("Time", reading.timestamp),
-                                y: .value("Left", reading.temperatureL)
-                            )
-                            .foregroundStyle(.cyan)
+                            //LineMark(
+                            //    x: .value("Time", reading.timestamp),
+                            //    y: .value("Left", reading.temperatureL)
+                            //)
+                            //.foregroundStyle(.cyan)
                         }
                     }
                     .frame(height: 100)
@@ -207,11 +207,11 @@ struct ContentView: View {
                             )
                             .foregroundStyle(.red)
                             
-                            LineMark(
-                                x: .value("Time", reading.timestamp),
-                                y: .value("Left", reading.errorL)
-                            )
-                            .foregroundStyle(.pink)
+                            //LineMark(
+                            //    x: .value("Time", reading.timestamp),
+                            //    y: .value("Left", reading.errorL)
+                           // )
+                           // .foregroundStyle(.pink)
                         }
                     }
                     .frame(height: 100)
@@ -239,11 +239,11 @@ struct ContentView: View {
                             )
                             .foregroundStyle(.green)
                             
-                            LineMark(
-                                x: .value("Time", reading.timestamp),
-                                y: .value("Left", reading.integralL)
-                            )
-                            .foregroundStyle(.mint)
+                            //LineMark(
+                            //    x: .value("Time", reading.timestamp),
+                            //    y: .value("Left", reading.integralL)
+                            //)
+                            //.foregroundStyle(.mint)
                         }
                     }
                     .frame(height: 100)
@@ -303,11 +303,11 @@ struct ContentView: View {
                             )
                             .foregroundStyle(.purple)
                             
-                            LineMark(
-                                x: .value("Time", reading.timestamp),
-                                y: .value("Left", reading.heaterPowerL)
-                            )
-                            .foregroundStyle(.indigo)
+                            //LineMark(
+                            //    x: .value("Time", reading.timestamp),
+                            //    y: .value("Left", reading.heaterPowerL)
+                            //)
+                            //.foregroundStyle(.indigo)
                         }
                     }
                     .frame(height: 100)

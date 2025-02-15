@@ -131,7 +131,7 @@ extension BluetoothManager: CBPeripheralDelegate {
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
 
-        print("MemoryLayoutSize=", MemoryLayout<DebugData>.size );
+        //print("MemoryLayoutSize=", MemoryLayout<DebugData>.size );
         if characteristic.uuid == tempCharUUID,
            let data = characteristic.value,
            data.count >= MemoryLayout<DebugData>.size {
