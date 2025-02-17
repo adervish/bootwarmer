@@ -11,7 +11,7 @@
 // Pin definitions
 const int HEATER_PIN_R = 18;  // PWM output for right heater control
 const int TEMP_PIN_R = 35;    // ADC input for right temperature sensor
-const int HEATER_PIN_L = 25;  // PWM output for left heater control
+const int HEATER_PIN_L = 33;  // PWM output for left heater control
 const int TEMP_PIN_L = 34;    // ADC input for left temperature sensor
 
 // PWM configuration
@@ -53,8 +53,8 @@ float lastErrorR = 0.0;      // Last error for right derivative term
 float lastErrorL = 0.0;      // Last error for left derivative term
 float integralR = 0.0;       // Right integral accumulator
 float integralL = 0.0;       // Left integral accumulator
-uint8_t heaterPowerR = 0;    // Right heater 0-100%
-uint8_t heaterPowerL = 0;    // Left heater 0-100%
+uint8_t heaterPowerR = 33;    // Right heater 0-100%
+uint8_t heaterPowerL = 33;    // Left heater 0-100%
 unsigned long lastPidTime = 0; // Last PID calculation time
 DebugData debugData;        // Data structure for BLE transmission
 
@@ -148,7 +148,7 @@ void setup() {
 }
 
 void loop() {
-    if (deviceConnected) {
+    if (true) {
         unsigned long currentTime = millis();
         
         // Read temperatures
@@ -169,6 +169,8 @@ void loop() {
             float derivativeR = (errorR - lastErrorR);
             float outputR = (KP * errorR) + (KI * integralR) + (KD * derivativeR);
             heaterPowerR = constrain((int)outputR, 0, 100);
+            if( temperatureR < 0 )
+              heaterPowerR = 33;
             uint8_t pwmLevelR = (int)((float)heaterPowerR / 100.0 * 255.0);
             ledcWrite(HEATER_PIN_R, pwmLevelR);  // Channel 0 for right heater
             
@@ -178,6 +180,8 @@ void loop() {
             float derivativeL = (errorL - lastErrorL);
             float outputL = (KP * errorL) + (KI * integralL) + (KD * derivativeL);
             heaterPowerL = constrain((int)outputL, 0, 100);
+            if( temperatureL < 0 )
+              heaterPowerL = 33;
             uint8_t pwmLevelL = (int)((float)heaterPowerL / 100.0 * 255.0);
             ledcWrite(HEATER_PIN_L, pwmLevelL);  // Channel 1 for left heater
             
@@ -216,10 +220,10 @@ void loop() {
             lastPidTime = currentTime;
             
             // Print debug info
-            Serial.printf("Right - Temp: %.1f°F, Set: %.1f°F, Error: %.1f, Power: %d%%\n", 
-                         temperatureR, setpointTempR, errorR, heaterPowerR);
-            Serial.printf("Left  - Temp: %.1f°F, Set: %.1f°F, Error: %.1f, Power: %d%%\n", 
-                         temperatureL, setpointTempL, errorL, heaterPowerL);
+            //Serial.printf("Right - Temp: %.1f°F, Set: %.1f°F, Error: %.1f, Power: %d%%\n", 
+            //             temperatureR, setpointTempR, errorR, heaterPowerR);
+            //Serial.printf("Left  - Temp: %.1f°F, Set: %.1f°F, Error: %.1f, Power: %d%%\n", 
+            //             temperatureL, setpointTempL, errorL, heaterPowerL);
         }
     }
     
