@@ -21,6 +21,16 @@ struct ContentView: View {
     
     @State private var readings: [Reading] = []
     
+    private var temperatureYAxisRange: ClosedRange<Double> {
+        let temps = readings.flatMap { reading in 
+            [reading.temperatureL, reading.temperatureR].filter { $0 > -20 }
+        }
+        guard let min = temps.min(), let max = temps.max() else { return 40...110 }
+        let range = max - min
+        let padding = range * 0.1
+        return (min - padding)...(max + padding)
+    }
+    
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -164,18 +174,22 @@ struct ContentView: View {
                     Text("Temperature (°F)")
                         .font(.caption)
                     Chart {
-                        ForEach(readings, id: \.timestamp) { reading in
-                            LineMark(
-                                x: .value("Time", reading.timestamp),
-                                y: .value("Right", reading.temperatureL)
-                            )
-                            .foregroundStyle(by: .value("Temperature", "Left"))
+                        ForEach(readings.indices, id: \.self) { index in
+                            if readings[index].temperatureL > -20 {
+                                LineMark(
+                                    x: .value("Time", readings[index].timestamp),
+                                    y: .value("Right", readings[index].temperatureL)
+                                )
+                                .foregroundStyle(by: .value("Temperature", "Left"))
+                            }
                             
-                            LineMark(
-                                x: .value("Time", reading.timestamp),
-                                y: .value("Left", reading.temperatureR)
-                            )
-                            .foregroundStyle(by: .value("Temperature", "Right"))
+                            if readings[index].temperatureR > -20 {
+                                LineMark(
+                                    x: .value("Time", readings[index].timestamp),
+                                    y: .value("Left", readings[index].temperatureR)
+                                )
+                                .foregroundStyle(by: .value("Temperature", "Right"))
+                            }
                         }
                     }.chartForegroundStyleScale([
                         "Right": .blue,
@@ -184,7 +198,7 @@ struct ContentView: View {
                     .frame(height: 100)
                     .chartXAxis(.hidden)
                     .chartLegend(position: .top)
-                    .chartYScale(domain: 40...110)
+                    .chartYScale(domain: temperatureYAxisRange)
                     .chartYAxis {
                         AxisMarks { value in
                             AxisGridLine()

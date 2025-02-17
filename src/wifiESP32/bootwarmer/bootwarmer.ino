@@ -15,7 +15,7 @@ const int HEATER_PIN_L = 33;  // PWM output for left heater control
 const int TEMP_PIN_L = 34;    // ADC input for left temperature sensor
 
 // PWM configuration
-const int PWM_FREQ = 10;      // 100 Hz
+const int PWM_FREQ = 100;      // 100 Hz
 const int PWM_RESOLUTION = 8;   // 8-bit resolution (0-255)
 
 // Temperature calculation constants
@@ -148,6 +148,12 @@ void setup() {
 }
 
 void loop() {
+
+    int counterR = 0;
+    int counterL = 0;
+    float tempAccumR = 0;
+    float tempAccumL = 0;
+
     if (true) {
         unsigned long currentTime = millis();
         
@@ -157,14 +163,27 @@ void loop() {
         float temperatureR = calculateTemperature(adcValueR);
         float temperatureL = calculateTemperature(adcValueL);
         
-        // Update initial debug data
-        debugData.temperatureR = temperatureR;
-        debugData.temperatureL = temperatureL;
-        
+        counterR++;
+        counterL++;
+        tempAccumR += temperatureR;
+        tempAccumL += temperatureL;
+
         // Calculate PID control every 250ms for faster response
-        if (currentTime - lastPidTime >= 250) {
+        if (currentTime - lastPidTime >= 1000) {
+
+            float avgTempR = tempAccumR / (float) counterR;
+            float avgTempL = tempAccumL / (float) counterL;
+            counterR = 0;
+            counterL = 0;
+            tempAccumR = 0.0;
+            tempAccumL = 0.0;
+
+            // Update initial debug data
+            debugData.temperatureR = avgTempR;
+            debugData.temperatureL = avgTempL;
+
             // Right side PID
-            float errorR = setpointTempR - temperatureR;
+            float errorR = setpointTempR - avgTempR;
             integralR = constrain(integralR + errorR, -255, 255);
             float derivativeR = (errorR - lastErrorR);
             float outputR = (KP * errorR) + (KI * integralR) + (KD * derivativeR);
@@ -175,7 +194,7 @@ void loop() {
             ledcWrite(HEATER_PIN_R, pwmLevelR);  // Channel 0 for right heater
             
             // Left side PID
-            float errorL = setpointTempL - temperatureL;
+            float errorL = setpointTempL - avgTempL;
             integralL = constrain(integralL + errorL, -255, 255);
             float derivativeL = (errorL - lastErrorL);
             float outputL = (KP * errorL) + (KI * integralL) + (KD * derivativeL);
@@ -228,5 +247,5 @@ void loop() {
     }
     
     // Small delay for system stability
-    delay(50);
+    delay(100);
 }
