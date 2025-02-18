@@ -9,9 +9,9 @@
 #define TEMP_CHAR_UUID     "beb5483e-36e1-4688-b7f5-ea07361b26a9"
 
 // Pin definitions
-const int HEATER_PIN_R = 18;  // PWM output for right heater control
+const int HEATER_PIN_R = 33;  // PWM output for right heater control
 const int TEMP_PIN_R = 35;    // ADC input for right temperature sensor
-const int HEATER_PIN_L = 33;  // PWM output for left heater control
+const int HEATER_PIN_L = 18;  // PWM output for left heater control
 const int TEMP_PIN_L = 34;    // ADC input for left temperature sensor
 
 // PWM configuration
