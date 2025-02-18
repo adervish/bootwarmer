@@ -10,10 +10,14 @@ Here's the boot warming system hardware:
 
 ![Boot Warmer Hardware](images/IMG_8627%202.PNG)
 ![Boot Warmer Components](images/IMG_8628%202.PNG)
-![Boot Warmer Installation](images/IMG_8630.PNG)
 ![Boot Warmer Setup](images/IMG_8631.png)
 ![Boot Warmer In Use](images/IMG_8633.png)
-![Boot Warmer Final](images/IMG_8636.PNG)
+
+## Demo Video
+
+Check out the boot warming system in action:
+
+[Download Demo Video](bootwarmer.mov)
 
 ## Purchase Hardware Kit
 
