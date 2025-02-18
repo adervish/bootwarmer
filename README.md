@@ -2,6 +2,8 @@
 
 A SwiftUI iOS app that controls a smart boot warming system via Bluetooth LE. The app connects to an ESP32-based device that manages heating elements in ski/snowboard boots.
 
+Source code available at: [GitHub Repository](https://github.com/adervish/bootwarmer)
+
 ## Hardware Overview
 
 Here's the boot warming system hardware:
@@ -12,6 +14,23 @@ Here's the boot warming system hardware:
 ![Boot Warmer Setup](images/IMG_8631.png)
 ![Boot Warmer In Use](images/IMG_8633.png)
 ![Boot Warmer Final](images/IMG_8636.PNG)
+
+## Purchase Hardware Kit
+
+Want to build your own boot warming system? You can purchase a hardware kit with all the necessary components. The kit includes:
+
+- ESP32 microcontroller
+- MOSFETs
+- Resistors
+- Thermistors
+- Polyimide heater pads
+- Breadboard
+
+To order:
+
+1. Venmo $100 to @alex_derbes
+2. Include your shipping address in the Venmo note
+3. Your kit will be shipped within 5 business days
 
 ## Features
 
