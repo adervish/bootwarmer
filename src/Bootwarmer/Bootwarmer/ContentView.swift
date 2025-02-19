@@ -17,6 +17,14 @@ struct ContentView: View {
         let integralL: Double
         let derivativeL: Double
         let heaterPowerL: Double
+        // IMU data
+        let accelerationX: Double
+        let accelerationY: Double
+        let accelerationZ: Double
+        let gyroX: Double
+        let gyroY: Double
+        let gyroZ: Double
+        let imuTemperature: Double
     }
     
     @State private var readings: [Reading] = []
@@ -53,7 +61,14 @@ struct ContentView: View {
                             errorL: Double(bluetoothManager.pidErrorL),
                             integralL: Double(bluetoothManager.pidIntegralL),
                             derivativeL: Double(bluetoothManager.pidDerivativeL),
-                            heaterPowerL: Double(bluetoothManager.heaterPowerL)
+                            heaterPowerL: Double(bluetoothManager.heaterPowerL),
+                            accelerationX: Double(bluetoothManager.accelerationX),
+                            accelerationY: Double(bluetoothManager.accelerationY),
+                            accelerationZ: Double(bluetoothManager.accelerationZ),
+                            gyroX: Double(bluetoothManager.gyroX),
+                            gyroY: Double(bluetoothManager.gyroY),
+                            gyroZ: Double(bluetoothManager.gyroZ),
+                            imuTemperature: Double(bluetoothManager.imuTemperature)
                         ))
                     }
                     
@@ -357,7 +372,129 @@ struct ContentView: View {
                         }
                     }
                     
-
+                    Text("IMU Data")
+                        .font(.caption)
+                        .padding(.top)
+                    
+                    // IMU Temperature
+                    Text("IMU Temperature (°F)")
+                        .font(.caption)
+                    Chart {
+                        ForEach(readings, id: \.timestamp) { reading in
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Temperature", reading.imuTemperature)
+                            )
+                            .foregroundStyle(.red)
+                        }
+                    }
+                    .frame(height: 100)
+                    .chartXAxis(.hidden)
+                    .chartYAxis {
+                        AxisMarks { value in
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel {
+                                if let temp = value.as(Double.self) {
+                                    Text(String(format: "%.1f°F", temp))
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Acceleration
+                    Text("Acceleration (g)")
+                        .font(.caption)
+                    Chart {
+                        ForEach(readings, id: \.timestamp) { reading in
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("X", reading.accelerationX)
+                            )
+                            .foregroundStyle(by: .value("Axis", "X"))
+                            
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Y", reading.accelerationY)
+                            )
+                            .foregroundStyle(by: .value("Axis", "Y"))
+                            
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Z", reading.accelerationZ)
+                            )
+                            .foregroundStyle(by: .value("Axis", "Z"))
+                        }
+                    }
+                    .chartForegroundStyleScale([
+                        "X": .red,
+                        "Y": .green,
+                        "Z": .blue
+                    ])
+                    .frame(height: 100)
+                    .chartXAxis(.hidden)
+                    .chartLegend(position: .top)
+                    .chartYAxis {
+                        AxisMarks { value in
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel {
+                                if let accel = value.as(Double.self) {
+                                    Text(String(format: "%.2f", accel))
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Gyroscope
+                    Text("Gyroscope (°/s)")
+                        .font(.caption)
+                    Chart {
+                        ForEach(readings, id: \.timestamp) { reading in
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("X", reading.gyroX)
+                            )
+                            .foregroundStyle(by: .value("Axis", "X"))
+                            
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Y", reading.gyroY)
+                            )
+                            .foregroundStyle(by: .value("Axis", "Y"))
+                            
+                            LineMark(
+                                x: .value("Time", reading.timestamp),
+                                y: .value("Z", reading.gyroZ)
+                            )
+                            .foregroundStyle(by: .value("Axis", "Z"))
+                        }
+                    }
+                    .chartForegroundStyleScale([
+                        "X": .orange,
+                        "Y": .purple,
+                        "Z": .teal
+                    ])
+                    .frame(height: 100)
+                    .chartXAxis {
+                        AxisMarks { _ in
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel(format: .dateTime.hour().minute().second())
+                        }
+                    }
+                    .chartLegend(position: .top)
+                    .chartYAxis {
+                        AxisMarks { value in
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel {
+                                if let gyro = value.as(Double.self) {
+                                    Text(String(format: "%.1f", gyro))
+                                }
+                            }
+                        }
+                    }
                 }
                 .padding()
                 }

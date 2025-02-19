@@ -3,6 +3,13 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
+
+Adafruit_MPU6050 mpu;
+
 // BLE service and characteristic UUIDs
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define HEATER_CHAR_UUID   "beb5483e-36e1-4688-b7f5-ea07361b26a8"
@@ -40,6 +47,13 @@ struct DebugData {
     float integralL;
     float derivativeL;
     uint32_t heaterPowerL;
+    float accelerationX;
+    float accelerationY;
+    float accelerationZ;
+    float gyroX;
+    float gyroY;
+    float gyroZ;
+    float temperature;
 } __attribute__((packed));
 
 // Global variables
@@ -102,6 +116,80 @@ float calculateTemperature(int adcValue) {
 void setup() {
     // Initialize Serial for debugging
     Serial.begin(115200);
+    while (!Serial)
+      delay(10);
+
+    // Try to initialize!
+    if (!mpu.begin()) {
+      Serial.println("Failed to find MPU6050 chip");
+      while (1) {
+        delay(10);
+      }
+    }
+    Serial.println("MPU6050 Found!");
+
+      mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  Serial.print("Accelerometer range set to: ");
+  switch (mpu.getAccelerometerRange()) {
+  case MPU6050_RANGE_2_G:
+    Serial.println("+-2G");
+    break;
+  case MPU6050_RANGE_4_G:
+    Serial.println("+-4G");
+    break;
+  case MPU6050_RANGE_8_G:
+    Serial.println("+-8G");
+    break;
+  case MPU6050_RANGE_16_G:
+    Serial.println("+-16G");
+    break;
+  }
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  Serial.print("Gyro range set to: ");
+  switch (mpu.getGyroRange()) {
+  case MPU6050_RANGE_250_DEG:
+    Serial.println("+- 250 deg/s");
+    break;
+  case MPU6050_RANGE_500_DEG:
+    Serial.println("+- 500 deg/s");
+    break;
+  case MPU6050_RANGE_1000_DEG:
+    Serial.println("+- 1000 deg/s");
+    break;
+  case MPU6050_RANGE_2000_DEG:
+    Serial.println("+- 2000 deg/s");
+    break;
+  }
+
+  mpu.setFilterBandwidth(MPU6050_BAND_5_HZ);
+  Serial.print("Filter bandwidth set to: ");
+  switch (mpu.getFilterBandwidth()) {
+  case MPU6050_BAND_260_HZ:
+    Serial.println("260 Hz");
+    break;
+  case MPU6050_BAND_184_HZ:
+    Serial.println("184 Hz");
+    break;
+  case MPU6050_BAND_94_HZ:
+    Serial.println("94 Hz");
+    break;
+  case MPU6050_BAND_44_HZ:
+    Serial.println("44 Hz");
+    break;
+  case MPU6050_BAND_21_HZ:
+    Serial.println("21 Hz");
+    break;
+  case MPU6050_BAND_10_HZ:
+    Serial.println("10 Hz");
+    break;
+  case MPU6050_BAND_5_HZ:
+    Serial.println("5 Hz");
+    break;
+  }
+
+  Serial.println("");
+  delay(100);
+
     ledcAttach(HEATER_PIN_R, PWM_FREQ, PWM_RESOLUTION);  // Channel 0 for right heater
     //ledcSetup(0, PWM_FREQ, PWM_RESOLUTION);
     ledcAttach(HEATER_PIN_L, PWM_FREQ, PWM_RESOLUTION);  // Channel 1 for left heater
@@ -170,6 +258,17 @@ void loop() {
 
         // Calculate PID control every 250ms for faster response
         if (currentTime - lastPidTime >= 1000) {
+
+            sensors_event_t a, g, temp;
+            mpu.getEvent(&a, &g, &temp);
+
+            debugData.accelerationX = a.acceleration.x;
+            debugData.accelerationY = a.acceleration.y;
+            debugData.accelerationZ = a.acceleration.z;
+            debugData.gyroX = g.gyro.x;
+            debugData.gyroY = g.gyro.y;
+            debugData.gyroZ = g.gyro.z;
+            debugData.temperature = temp.temperature;
 
             float avgTempR = tempAccumR / (float) counterR;
             float avgTempL = tempAccumL / (float) counterL;

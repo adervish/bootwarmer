@@ -15,6 +15,13 @@ typedef struct __attribute__((packed)) {
     float integralL;
     float derivativeL;
     uint32_t heaterPowerL;
+    float accelerationX;
+    float accelerationY;
+    float accelerationZ;
+    float gyroX;
+    float gyroY;
+    float gyroZ;
+    float temperature;
 } DebugData;
 
 #endif /* DebugData_h */

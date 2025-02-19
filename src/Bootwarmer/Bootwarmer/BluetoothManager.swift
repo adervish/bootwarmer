@@ -26,6 +26,16 @@ class BluetoothManager: NSObject, ObservableObject {
     @Published var pidErrorL: Float = 0.0
     @Published var pidIntegralL: Float = 0.0
     @Published var pidDerivativeL: Float = 0.0
+    
+    // IMU Data
+    @Published var accelerationX: Float = 0.0
+    @Published var accelerationY: Float = 0.0
+    @Published var accelerationZ: Float = 0.0
+    @Published var gyroX: Float = 0.0
+    @Published var gyroY: Float = 0.0
+    @Published var gyroZ: Float = 0.0
+    @Published var imuTemperature: Float = 0.0
+    
     @Published var connectionStatus: ConnectionStatus = .disconnected
 
     enum ConnectionStatus {
@@ -146,7 +156,14 @@ extension BluetoothManager: CBPeripheralDelegate {
                     errorL: ptr.load(fromByteOffset: 24, as: Float.self),
                     integralL: ptr.load(fromByteOffset: 28, as: Float.self),
                     derivativeL: ptr.load(fromByteOffset: 32, as: Float.self),
-                    heaterPowerL: ptr.load(fromByteOffset: 36, as: UInt32.self)
+                    heaterPowerL: ptr.load(fromByteOffset: 36, as: UInt32.self),
+                    accelerationX: ptr.load(fromByteOffset: 40, as: Float.self),
+                    accelerationY: ptr.load(fromByteOffset: 44, as: Float.self),
+                    accelerationZ: ptr.load(fromByteOffset: 48, as: Float.self),
+                    gyroX: ptr.load(fromByteOffset: 52, as: Float.self),
+                    gyroY: ptr.load(fromByteOffset: 56, as: Float.self),
+                    gyroZ: ptr.load(fromByteOffset: 60, as: Float.self),
+                    temperature: ptr.load(fromByteOffset: 64, as: Float.self)
                 )
             }
             
@@ -162,6 +179,15 @@ extension BluetoothManager: CBPeripheralDelegate {
                 self.pidErrorL = debugData.errorL
                 self.pidIntegralL = debugData.integralL
                 self.pidDerivativeL = debugData.derivativeL
+                
+                // Update IMU data
+                self.accelerationX = debugData.accelerationX
+                self.accelerationY = debugData.accelerationY
+                self.accelerationZ = debugData.accelerationZ
+                self.gyroX = debugData.gyroX
+                self.gyroY = debugData.gyroY
+                self.gyroZ = debugData.gyroZ
+                self.imuTemperature = debugData.temperature
             }
         }
     }
