@@ -144,8 +144,8 @@ extension BluetoothManager: CBPeripheralDelegate {
         //print("MemoryLayoutSize=", MemoryLayout<DebugData>.size );
         if characteristic.uuid == tempCharUUID,
            let data = characteristic.value,
-           data.count >= MemoryLayout<DebugData>.size {
-            let debugData = data.withUnsafeBytes { ptr -> DebugData in
+           data.count >= 40 { // Minimum size for PID data (10 values * 4 bytes)
+            var debugData = data.withUnsafeBytes { ptr -> DebugData in
                 return DebugData(
                     temperatureR: ptr.load(as: Float.self),
                     errorR: ptr.load(fromByteOffset: 4, as: Float.self),
@@ -157,17 +157,33 @@ extension BluetoothManager: CBPeripheralDelegate {
                     integralL: ptr.load(fromByteOffset: 28, as: Float.self),
                     derivativeL: ptr.load(fromByteOffset: 32, as: Float.self),
                     heaterPowerL: ptr.load(fromByteOffset: 36, as: UInt32.self),
-                    accelerationX: ptr.load(fromByteOffset: 40, as: Float.self),
-                    accelerationY: ptr.load(fromByteOffset: 44, as: Float.self),
-                    accelerationZ: ptr.load(fromByteOffset: 48, as: Float.self),
-                    gyroX: ptr.load(fromByteOffset: 52, as: Float.self),
-                    gyroY: ptr.load(fromByteOffset: 56, as: Float.self),
-                    gyroZ: ptr.load(fromByteOffset: 60, as: Float.self),
-                    temperature: ptr.load(fromByteOffset: 64, as: Float.self)
+                    accelerationX: 0,
+                    accelerationY: 0,
+                    accelerationZ: 0,
+                    gyroX: 0,
+                    gyroY: 0,
+                    gyroZ: 0,
+                    temperature: 0
                 )
             }
             
+            // Load IMU data if available (additional 28 bytes: 7 float values * 4 bytes)
+            if data.count >= 68 {
+                debugData = data.withUnsafeBytes { ptr -> DebugData in
+                    var updated = debugData
+                    updated.accelerationX = ptr.load(fromByteOffset: 40, as: Float.self)
+                    updated.accelerationY = ptr.load(fromByteOffset: 44, as: Float.self)
+                    updated.accelerationZ = ptr.load(fromByteOffset: 48, as: Float.self)
+                    updated.gyroX = ptr.load(fromByteOffset: 52, as: Float.self)
+                    updated.gyroY = ptr.load(fromByteOffset: 56, as: Float.self)
+                    updated.gyroZ = ptr.load(fromByteOffset: 60, as: Float.self)
+                    updated.temperature = ptr.load(fromByteOffset: 64, as: Float.self)
+                    return updated
+                }
+            }
+            
             DispatchQueue.main.async {
+                // Update PID data
                 self.measuredTemperatureR = debugData.temperatureR
                 self.heaterPowerR = Float(debugData.heaterPowerR)
                 self.pidErrorR = debugData.errorR
@@ -180,7 +196,7 @@ extension BluetoothManager: CBPeripheralDelegate {
                 self.pidIntegralL = debugData.integralL
                 self.pidDerivativeL = debugData.derivativeL
                 
-                // Update IMU data
+                // Update IMU data (will be 0 if not available in packet)
                 self.accelerationX = debugData.accelerationX
                 self.accelerationY = debugData.accelerationY
                 self.accelerationZ = debugData.accelerationZ
