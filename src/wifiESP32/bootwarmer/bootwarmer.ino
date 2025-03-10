@@ -69,6 +69,8 @@ float integralR = 0.0;       // Right integral accumulator
 float integralL = 0.0;       // Left integral accumulator
 uint8_t heaterPowerR = 33;    // Right heater 0-100%
 uint8_t heaterPowerL = 33;    // Left heater 0-100%
+uint8_t forcePowerLevelR = 5;  // 0=Off, 1=0%, 2=25%, 3=50%, 4=100%, 5=Track Temp (default)
+uint8_t forcePowerLevelL = 5;  // 0=Off, 1=0%, 2=25%, 3=50%, 4=100%, 5=Track Temp (default)
 unsigned long lastPidTime = 0; // Last PID calculation time
 DebugData debugData;        // Data structure for BLE transmission
 
@@ -89,8 +91,34 @@ class ServerCallbacks: public BLEServerCallbacks {
 class HeaterCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
         uint8_t* data = pCharacteristic->getData();
+        Serial.print("Length: ");
+        Serial.println(pCharacteristic->getLength());
         if (data != nullptr && pCharacteristic->getLength() > 0) {
-            if (pCharacteristic->getLength() >= 2) {
+            // Log the raw data received
+            Serial.print("Raw data received [");
+            for (int i = 0; i < pCharacteristic->getLength(); i++) {
+                Serial.print(data[i]);
+                if (i < pCharacteristic->getLength() - 1) {
+                    Serial.print(", ");
+                }
+            }
+            Serial.println("]");
+            
+            // Check if we received at least 4 bytes (2 temps + 2 force power levels)
+            if (pCharacteristic->getLength() >= 4) {
+                setpointTempR = data[0];  // Right temperature setpoint in Fahrenheit
+                setpointTempL = data[1];  // Left temperature setpoint in Fahrenheit
+                forcePowerLevelR = data[2];  // Right force power level
+                forcePowerLevelL = data[3];  // Left force power level
+                
+                Serial.printf("New settings - Right: %.1f°F (Force: %d), Left: %.1f°F (Force: %d)\n", 
+                            setpointTempR, forcePowerLevelR, setpointTempL, forcePowerLevelL);
+                
+                // Log the meaning of the force power levels
+                Serial.println("Force power levels: 0=Off, 1=0%, 2=25%, 3=50%, 4=100%, 5=Track Temp");
+            }
+            else if (pCharacteristic->getLength() >= 2) {
+                // Backward compatibility for older app versions
                 setpointTempR = data[0];  // Right temperature setpoint in Fahrenheit
                 setpointTempL = data[1];  // Left temperature setpoint in Fahrenheit
                 Serial.printf("New temperature setpoints - Right: %.1f°F, Left: %.1f°F\n", 
@@ -255,7 +283,7 @@ void loop() {
         tempAccumL += temperatureL;
 
         // Calculate PID control every 250ms for faster response
-        if (currentTime - lastPidTime >= 1000) {
+        if (currentTime - lastPidTime >= 500) {
 
             sensors_event_t a, g, temp;
             mpu.getEvent(&a, &g, &temp);
@@ -278,45 +306,92 @@ void loop() {
             // Update initial debug data
             debugData.temperatureR = avgTempR;
             debugData.temperatureL = avgTempL;
+            
+            // Initialize PID variables
+            float errorR = 0, errorL = 0;
+            float derivativeR = 0, derivativeL = 0;
 
-            // Right side PID
-            float errorR = setpointTempR - avgTempR;
-            integralR = constrain(integralR + errorR, -255, 255);
-            float derivativeR = (errorR - lastErrorR);
-            float outputR = (KP * errorR) + (KI * integralR) + (KD * derivativeR);
-            heaterPowerR = constrain((int)outputR, 0, 100);
-            if( temperatureR < 0 )
-              heaterPowerR = 33;
+            // Always calculate error for debug display purposes
+            errorR = setpointTempR - avgTempR;
+            derivativeR = (errorR - lastErrorR);
+            
+            // Right side - Check if using forced power or PID control
+            if (forcePowerLevelR == 5) {
+                // Track Temperature mode - use PID control
+                integralR = constrain(integralR + errorR, -255, 255);
+                float outputR = (KP * errorR) + (KI * integralR) + (KD * derivativeR);
+                heaterPowerR = constrain((int)outputR, 0, 100);
+                if (temperatureR < 0)
+                    heaterPowerR = 33;
+            } else {
+                // Force power mode
+                switch (forcePowerLevelR) {
+                    case 0: // Off
+                        heaterPowerR = 0;
+                        break;
+                    case 1: // 0%
+                        heaterPowerR = 0;
+                        break;
+                    case 2: // 25%
+                        heaterPowerR = 25;
+                        break;
+                    case 3: // 50%
+                        heaterPowerR = 50;
+                        break;
+                    case 4: // 100%
+                        heaterPowerR = 100;
+                        break;
+                    default:
+                        heaterPowerR = 0;
+                        break;
+                }
+                Serial.printf("Right using forced power level: %d%% (mode %d)\n", heaterPowerR, forcePowerLevelR);
+            }
+            
             uint8_t pwmLevelR = (int)((float)heaterPowerR / 100.0 * 255.0);
             ledcWrite(HEATER_PIN_R, pwmLevelR);  // Channel 0 for right heater
             
-            // Left side PID
-            float errorL = setpointTempL - avgTempL;
-            integralL = constrain(integralL + errorL, -255, 255);
-            float derivativeL = (errorL - lastErrorL);
-            float outputL = (KP * errorL) + (KI * integralL) + (KD * derivativeL);
-            heaterPowerL = constrain((int)outputL, 0, 100);
-            if( temperatureL < 0 )
-              heaterPowerL = 33;
+            // Always calculate error for debug display purposes
+            errorL = setpointTempL - avgTempL;
+            derivativeL = (errorL - lastErrorL);
+            
+            // Left side - Check if using forced power or PID control
+            if (forcePowerLevelL == 5) {
+                // Track Temperature mode - use PID control
+                integralL = constrain(integralL + errorL, -255, 255);
+                float outputL = (KP * errorL) + (KI * integralL) + (KD * derivativeL);
+                heaterPowerL = constrain((int)outputL, 0, 100);
+                if (temperatureL < 0)
+                    heaterPowerL = 33;
+            } else {
+                // Force power mode
+                switch (forcePowerLevelL) {
+                    case 0: // Off
+                        heaterPowerL = 0;
+                        break;
+                    case 1: // 0%
+                        heaterPowerL = 0;
+                        break;
+                    case 2: // 25%
+                        heaterPowerL = 25;
+                        break;
+                    case 3: // 50%
+                        heaterPowerL = 50;
+                        break;
+                    case 4: // 100%
+                        heaterPowerL = 100;
+                        break;
+                    default:
+                        heaterPowerL = 0;
+                        break;
+                }
+                Serial.printf("Left using forced power level: %d%% (mode %d)\n", heaterPowerL, forcePowerLevelL);
+            }
+            
             uint8_t pwmLevelL = (int)((float)heaterPowerL / 100.0 * 255.0);
             ledcWrite(HEATER_PIN_L, pwmLevelL);  // Channel 1 for left heater
             
-            // Update debug data
-            debugData.errorR = errorR;
-            debugData.integralR = integralR;
-            debugData.derivativeR = derivativeR;
-            debugData.heaterPowerR = heaterPowerR;
-            debugData.errorL = errorL;
-            debugData.integralL = integralL;
-            debugData.derivativeL = derivativeL;
-            debugData.heaterPowerL = heaterPowerL;
-            
-            // Send updated debug data over BLE
-            pTempCharacteristic->setValue((uint8_t*)&debugData, sizeof(DebugData));
-            pTempCharacteristic->notify();
-            //ledcWrite(HEATER_PIN_L, pwmLevelL);  // Channel 1 for left heater
-            
-            // Update debug data
+            // Update debug data - Always send current values regardless of mode
             debugData.errorR = errorR;
             debugData.integralR = integralR;
             debugData.derivativeR = derivativeR;
@@ -330,9 +405,11 @@ void loop() {
             pTempCharacteristic->setValue((uint8_t*)&debugData, sizeof(DebugData));
             pTempCharacteristic->notify();
             
-            // Update tracking variables
+            // Always update tracking variables for smooth transition
+            // if returning to Track Temperature mode
             lastErrorR = errorR;
             lastErrorL = errorL;
+            
             lastPidTime = currentTime;
             
             // Print debug info

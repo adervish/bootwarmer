@@ -18,6 +18,7 @@ class BluetoothManager: NSObject, ObservableObject {
     @Published var pidErrorR: Float = 0.0
     @Published var pidIntegralR: Float = 0.0
     @Published var pidDerivativeR: Float = 0.0
+    @Published var forcePowerLevelR: Int = 4  // 0 = Off, 1 = 0%, 2 = 25%, 3 = 50%, 4 = 100%, 5 = Trk Temp
     
     // Left side
     @Published var measuredTemperatureL: Float = 0.0
@@ -26,6 +27,7 @@ class BluetoothManager: NSObject, ObservableObject {
     @Published var pidErrorL: Float = 0.0
     @Published var pidIntegralL: Float = 0.0
     @Published var pidDerivativeL: Float = 0.0
+    @Published var forcePowerLevelL: Int = 5  // 0 = Off, 1 = 0%, 2 = 25%, 3 = 50%, 4 = 100%, 5 = Trk Temp
     
     // IMU Data
     @Published var accelerationX: Float = 0.0
@@ -70,11 +72,35 @@ class BluetoothManager: NSObject, ObservableObject {
     func setTargetTemperatures(right: Float, left: Float) {
         targetTemperatureR = right
         targetTemperatureL = left
-        // Send target temperatures to device
+        sendControlPacket()
+    }
+    
+    func cycleForcePowerLevelRight() {
+        forcePowerLevelR = (forcePowerLevelR + 1) % 6
+        updateForcePowerLevel()
+    }
+    
+    func cycleForcePowerLevelLeft() {
+        forcePowerLevelL = (forcePowerLevelL + 1) % 6
+        updateForcePowerLevel()
+    }
+    
+    private func updateForcePowerLevel() {
+        // Send updated control packet with force power levels
+        sendControlPacket()
+    }
+    
+    private func sendControlPacket() {
         guard let characteristic = heaterCharacteristic else { return }
-        let valueR = UInt8(max(0, min(100, right)))
-        let valueL = UInt8(max(0, min(100, left)))
-        bootwarmerPeripheral?.writeValue(Data([valueR, valueL]), for: characteristic, type: .withResponse)
+        
+        // Format packet: [targetTempR, targetTempL, forcePowerLevelR, forcePowerLevelL]
+        let targetTempR = UInt8(max(0, min(100, targetTemperatureR)))
+        let targetTempL = UInt8(max(0, min(100, targetTemperatureL)))
+        let powerLevelR = UInt8(forcePowerLevelR)
+        let powerLevelL = UInt8(forcePowerLevelL)
+        
+        let packet = Data([targetTempR, targetTempL, powerLevelR, powerLevelL])
+        bootwarmerPeripheral?.writeValue(packet, for: characteristic, type: .withResponse)
     }
 }
 

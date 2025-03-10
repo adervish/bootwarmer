@@ -12,7 +12,7 @@ struct ContentView: View {
         let derivativeR: Double
         let heaterPowerR: Double
         // Left side
-        let temperatureL: Double
+        let temperatureL: Double    
         let errorL: Double
         let integralL: Double
         let derivativeL: Double
@@ -28,6 +28,31 @@ struct ContentView: View {
     }
     
     @State private var readings: [Reading] = []
+    
+    // Helper functions for power level buttons
+    private func powerLevelText(_ level: Int) -> String {
+        switch level {
+        case 0: return "Off"
+        case 1: return "0%"
+        case 2: return "25%"
+        case 3: return "50%"
+        case 4: return "100%"
+        case 5: return "Trk Temp"
+        default: return "Trk Temp"
+        }
+    }
+    
+    private func powerLevelColor(_ level: Int) -> Color {
+        switch level {
+        case 0: return Color.secondary
+        case 1: return Color.gray
+        case 2: return Color.blue
+        case 3: return Color.orange
+        case 4: return Color.red
+        case 5: return Color.green
+        default: return Color.green
+        }
+    }
     
     private var temperatureYAxisRange: ClosedRange<Double> {
         let temps = readings.flatMap { reading in 
@@ -146,26 +171,46 @@ struct ContentView: View {
                     HStack(spacing: 20) {
          
                         // Left Side Temperature Control
-                        VStack(spacing: 5) {
+                        VStack(spacing: 10) {
                             Text("Target")
                                 .font(.subheadline)
                             Slider(value: Binding(
                                 get: { bluetoothManager.targetTemperatureL },
                                 set: { bluetoothManager.setTargetTemperatures(right: bluetoothManager.targetTemperatureR, left: $0) }
                             ), in: 50...100, step: 1)
+                            
+                            Button(action: {
+                                bluetoothManager.cycleForcePowerLevelLeft()
+                            }) {
+                                Text("Force Pwr Lvl: \(powerLevelText(bluetoothManager.forcePowerLevelL))")
+                                    .font(.system(size: 14))
+                                    .padding(8)
+                                    .background(powerLevelColor(bluetoothManager.forcePowerLevelL))
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
+                            }
                         }
 
                         // Right Side Temperature Control
-                        VStack(spacing: 5) {
+                        VStack(spacing: 10) {
                             Text("Target")
                                 .font(.subheadline)
                             Slider(value: Binding(
                                 get: { bluetoothManager.targetTemperatureR },
                                 set: { bluetoothManager.setTargetTemperatures(right: $0, left: bluetoothManager.targetTemperatureL) }
                             ), in: 50...100, step: 1)
+                            
+                            Button(action: {
+                                bluetoothManager.cycleForcePowerLevelRight()
+                            }) {
+                                Text("Force Pwr Lvl: \(powerLevelText(bluetoothManager.forcePowerLevelR))")
+                                    .font(.system(size: 14))
+                                    .padding(8)
+                                    .background(powerLevelColor(bluetoothManager.forcePowerLevelR))
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
+                            }
                         }
-                        
-         
                     }
                     .padding()
                 }
