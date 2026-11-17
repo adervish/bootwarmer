@@ -1,1 +1,12 @@
 src/Bootwarmer/Bootwarmer.xcodeproj/project.xcworkspace/xcuserdata/acd.xcuserdatad/UserInterfaceState.xcuserstate
+
+# hardware build intermediates
+hardware/build/
+hardware/fab/gerbers/
+*.kicad_prl
+__pycache__/
+.history/
+*-backups/
+fp-info-cache
+*.lck
+~*.lck
